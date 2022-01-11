@@ -1,86 +1,103 @@
 const anchor = require("@project-serum/anchor");
 const assert = require("assert");
 
-describe('francoin', () => {
-  const provider = anchor.Provider.local();
+// Need the system program
+const { SystemProgram } = anchor.web3;
+
+const main = async() => {
+  console.log("🚀 Starting test...")
+
+  // Create and set the provider.
+  const provider = anchor.Provider.local(); // local instead of env
   anchor.setProvider(provider);
+
   const program = anchor.workspace.Francoin;
 
   let mint = null;
   let from = null;
   let to = null;
 
-  it("Initializes test state", async () => {
-    mint = await createMint(provider);
-    from = await createTokenAccount(provider, mint, provider.wallet.publicKey);
-    to = await createTokenAccount(provider, mint, provider.wallet.publicKey);
-  });
-
-  it("Mints a token", async () => {
-    await program.rpc.proxyMintTo(new anchor.BN(1000), {
-      accounts: {
-        authority: provider.wallet.publicKey,
-        mint,
-        to: from,
-        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-      },
-    })
-
-    const fromAccount = await getTokenAccount(provider, from);
-
-    assert.ok(fromAccount.amount.eq(new anchor.BN(1000)));
-  });
-
-  it("Transfers a token", async () => {
-    await program.rpc.proxyTransfer(new anchor.BN(400), {
-      accounts: {
-        authority: provider.wallet.publicKey,
-        to,
-        from,
-        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-      },
-    });
-
-    const fromAccount = await getTokenAccount(provider, from);
-    const toAccount = await getTokenAccount(provider, to);
-
-    assert.ok(fromAccount.amount.eq(new anchor.BN(600)));
-    assert.ok(toAccount.amount.eq(new anchor.BN(400)));
-  });
-
-  it("Burns a token", async () => {
-    await program.rpc.proxyBurn(new anchor.BN(350), {
-      accounts: {
-        authority: provider.wallet.publicKey,
-        mint,
-        to,
-        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-      },
-    });
-
-    const toAccount = await getTokenAccount(provider, to);
-    assert.ok(toAccount.amount.eq(new anchor.BN(50)));
-  });
-
-  it("Set new mint authority", async () => {
-    const newMintAuthority = anchor.web3.Keypair.generate();
-    await program.rpc.proxySetAuthority(
-      { mintTokens: {} },
-      newMintAuthority.publicKey,
-      {
-        accounts: {
-          accountOrMint: mint,
-          currentAuthority: provider.wallet.publicKey,
-          tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
-        },
-      }
-    );
-
-    const mintInfo = await getMintInfo(provider, mint);
-    assert.ok(mintInfo.mintAuthority.equals(newMintAuthority));
-  });
   
-});
+  mint = await createMint(provider);
+  from = await createTokenAccount(provider, mint, provider.wallet.publicKey);
+  to = await createTokenAccount(provider, mint, provider.wallet.publicKey);
+
+  console.log("📝 Minting...");
+
+  await program.rpc.proxyMintTo(new anchor.BN(1000), {
+    accounts: {
+      authority: provider.wallet.publicKey,
+      mint,
+      to: from,
+      tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+    },
+  })
+
+  const fromAccountMint = await getTokenAccount(provider, from);
+
+  assert.ok(fromAccountMint.amount.eq(new anchor.BN(1000)));
+
+  console.log("📝 Minted");
+  
+
+  await program.rpc.proxyTransfer(new anchor.BN(400), {
+    accounts: {
+      authority: provider.wallet.publicKey,
+      to,
+      from,
+      tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+    },
+  });
+
+  const fromAccountTransfer = await getTokenAccount(provider, from);
+  const toAccountTransfer = await getTokenAccount(provider, to);
+
+  assert.ok(fromAccountTransfer.amount.eq(new anchor.BN(600)));
+  assert.ok(toAccountTransfer.amount.eq(new anchor.BN(400)));
+
+
+  await program.rpc.proxyBurn(new anchor.BN(350), {
+    accounts: {
+      authority: provider.wallet.publicKey,
+      mint,
+      to,
+      tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+    },
+  });
+
+  const toAccountBurn = await getTokenAccount(provider, to);
+  assert.ok(toAccountBurn.amount.eq(new anchor.BN(50)));
+
+
+  const newMintAuthority = anchor.web3.Keypair.generate();
+  await program.rpc.proxySetAuthority(
+    { mintTokens: {} },
+    newMintAuthority.publicKey,
+    {
+      accounts: {
+        accountOrMint: mint,
+        currentAuthority: provider.wallet.publicKey,
+        tokenProgram: TokenInstructions.TOKEN_PROGRAM_ID,
+      },
+    }
+  );
+
+  const mintInfo = await getMintInfo(provider, mint);
+  assert.ok(mintInfo.mintAuthority.equals(newMintAuthority));
+  
+};
+
+const runMain = async () => {
+  try {
+    await main();
+    process.exit(0);
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
+};
+
+runMain();
 
 const serumCmn = require("@project-serum/common");
 const TokenInstructions = require("@project-serum/serum").TokenInstructions;
