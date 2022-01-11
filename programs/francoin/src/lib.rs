@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Burn, MintTo, SetAuthority, Transfer};
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("3PXoLHwbQfpwjRB8evrpV8sAqs5LgTvu3HS4SHU2uBN7");
 
 #[program]
 pub mod francoin {
